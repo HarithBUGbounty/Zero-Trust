@@ -13,7 +13,7 @@ By locking down network communication at the socket level, ZeroTrust helps prote
 - **Keyloggers & Spyware:** Captures keystrokes or screen data mean nothing if the malware cannot exfiltrate that data out of your machine. ZeroTrust cuts off unauthorized data leaks before a single byte leaves your device.
 - **Unauthorized Background Trackers & Droppers:** Blocks silent background connections from untrusted binaries, scripts, and automatically block the unauthorized user that trying reach it.
 
-## My project structure
+## Project structure
 
 ```text
 zerotrust/
