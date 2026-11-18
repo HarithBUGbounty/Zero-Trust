@@ -1,4 +1,4 @@
-# ZeroTrust
+# ZeroTrust 🛡
 
 ZeroTrust is a lightweight, cross-platform C/C++ network enforcement utility built around a strict default-deny mindset. Instead of trusting connections by default and trying to catch bad traffic after it happens, ZeroTrust blocks everything first and only lets explicitly approved traffic pass through.
 
