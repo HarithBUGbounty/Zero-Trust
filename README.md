@@ -60,7 +60,40 @@ Run `scripts\setup.bat` to open the interactive control menu:
 - `` **View log** — Reads recent connection and block logs from `logs/`
 - `` **Clear log** — Resets the log files
 - `` **Show whitelist** — Displays currently allowed entries
-- `` **Exit** — Closes the menu
+- `` **Exit** — Closes
 
-## License
-This project is licensed under MIT license
+## Platform Support & iOS Constraints
+
+We get asked a lot: *"If this is a cross-platform Zero-Trust server, why can't I just run it on my iPhone like I do on Android?"*
+
+The short answer is: **Apple's sandbox says no.** 
+
+Here is a human breakdown of how ZeroTrust behaves across the four target operating systems, and exactly why iOS is the odd one out.
+
+### 1. Windows (`ZeroTrust.exe`)
+**Status:** Fully Working (Native)
+Windows is the primary target. The source uses Winsock2 (`ws2_32.lib`), binds to loopback, and enforces `SO_EXCLUSIVEADDRUSE` so other applications can't hijack the port. It compiles cleanly with MSVC using `/GS` (stack cookies), `/guard:cf` (Control Flow Guard), and `/DYNAMICBASE` (ASLR). You run it as a standard executable, and it sits silently in the background logging connection attempts to `zerotrust.log`.
+
+### 2. Linux (`zerotrust`)
+**Status:** Fully Working (POSIX Port)
+The Linux build uses standard POSIX sockets (`sys/socket.h`). Because Linux doesn't have `SO_EXCLUSIVEADDRUSE`, we use `SO_REUSEADDR`. It compiles via `g++` with `-fstack-protector-all`, `-D_FORTIFY_SOURCE=2`, and `-Wl,-z,relro,-z,now` (Full RELRO) to harden the binary against memory corruption. It runs as a standard daemon. 
+
+### 3. Android (`zerotrust_arm64`)
+**Status:** Fully Working (Root Required)
+Android is built on the Linux kernel, so the POSIX port works perfectly. We cross-compile it using the Android NDK for `arm64-v8a`. **The catch:** Android apps run in isolated user IDs. To read network sockets and bind to privileged ports (or even loopback in some newer Android versions), you need root. You push the binary via `adb`, run `su`, and execute it from `/data/local/tmp`. Once running, it behaves exactly like the Linux build.
+
+### 4. iOS (The Wall)
+**Status:** Not Runnable via Standard App Store
+This is where the "write once, run everywhere" dream dies. Here is why the iOS build won't work on a standard, non-jailbroken iPhone:
+
+1. **The Sandbox:** iOS apps are strictly sandboxed. They cannot open raw sockets or bind to listening ports (`bind()` and `listen()`) without the `com.apple.security.network.server` entitlement. Apple only grants this entitlement to apps that pass a rigorous App Store review (like remote desktop apps or local multiplayer games).
+2. **No Background Daemons:** iOS aggressively kills background processes. Even if you could bind the port, the OS would suspend your app the moment the user swipes up to the home screen.
+3. **Code Signing:** You cannot just `adb push` a compiled `.mm` (Objective-C++) binary to an iPhone. It must be signed by a valid Apple Developer certificate and provisioned to that specific device's UDID.
+
+**How to actually run it on iOS:**
+- **Jailbroken Devices:** If you have a jailbroken iPhone (via unc0ver or palera1n), the sandbox is removed. You can compile `ZeroTrust.mm` as a standalone command-line binary using `clang++` on macOS, `scp` it to the device, and run it from the terminal. 
+- **Xcode Debugger:** You can run it from Xcode on a free developer provisioning profile, but it will only stay alive while the debugger is attached.
+
+### Summary
+- **Windows, Linux, Android:** Build it, deploy it, run it. The code is hardened, the sockets work, and the whitelist enforces itself.
+- **iOS:** The logic is written and compiles, but Apple's OS is designed to prevent exactly this kind of headless, raw-socket networking tool from running unless you jailbreak the hardware.
